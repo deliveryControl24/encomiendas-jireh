@@ -718,3 +718,35 @@ class Database:
     def close(self):
         self._client_cache.clear()
         self.conn.close()
+
+    # ── Historial mensual ────────────────────────────────────────────────────
+
+    def obtener_resumen_mensual(self):
+        """Retorna lista de dicts con resumen por mes (anio, mes, envios, totales)."""
+        cur = self.conn.cursor()
+        cur.execute("""
+            SELECT
+                CAST(strftime('%Y', fecha) AS INTEGER) AS anio,
+                CAST(strftime('%m', fecha) AS INTEGER) AS mes,
+                COUNT(*) AS envios,
+                SUM(total) AS total_vendido,
+                SUM(abono) AS total_pagado,
+                SUM(restante) AS pendiente
+            FROM envios
+            WHERE estado != 'Cancelado'
+            GROUP BY anio, mes
+            ORDER BY anio DESC, mes DESC
+        """)
+        return [dict(r) for r in cur.fetchall()]
+
+    def obtener_envios_por_mes(self, anio, mes):
+        """Retorna lista de envios de un mes específico."""
+        cur = self.conn.cursor()
+        cur.execute("""
+            SELECT *
+            FROM envios
+            WHERE CAST(strftime('%Y', fecha) AS INTEGER) = ?
+              AND CAST(strftime('%m', fecha) AS INTEGER) = ?
+            ORDER BY fecha DESC
+        """, (anio, mes))
+        return [dict(r) for r in cur.fetchall()]

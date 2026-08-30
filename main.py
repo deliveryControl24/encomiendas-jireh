@@ -17,6 +17,7 @@ from modules.kpi_dashboard import KPIDashboardFrame
 from modules.reportes import ReportesFrame
 from modules.pago import PagoFrame
 from modules.configuracion import ConfiguracionFrame, ConfigManager
+from modules.historial_mensual import HistorialMensualFrame
 from modules.config import get_base_dir
 import logging
 import os
@@ -274,6 +275,7 @@ class App(tk.Tk):
         menus = [
             ("nueva",     "➕  Nueva encomienda"),
             ("historial", "📋  Historial"),
+            ("mensual",   "📅  Hist. mensual"),
             ("costos",    "💰  Costos viaje"),
             ("cobrar",    "📋  Ctas. cobrar"),
             ("arqueo",    "💵  Arqueo caja"),
@@ -351,6 +353,7 @@ class App(tk.Tk):
         for FrameClass, key in [
             (NuevaEncomiendaFrame, "nueva"),
             (HistorialFrame, "historial"),
+            (HistorialMensualFrame, "mensual"),
             (CostoViajeFrame, "costos"),
             (CuentasCobrarFrame, "cobrar"),
             (ArqueoCajaFrame, "arqueo"),

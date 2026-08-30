@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "nombre": "Encomienda Jireh",
   "repo_url": "https://github.com/deliveryControl24/encomiendas-jireh",
   "repo_rama": "main",
@@ -12,6 +12,7 @@
     "modules/configuracion.py",
     "modules/nueva_encomienda.py",
     "modules/historial.py",
+    "modules/historial_mensual.py",
     "modules/costo_viaje.py",
     "modules/arqueo_caja.py",
     "modules/cuentas_cobrar.py",
