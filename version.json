@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "nombre": "Encomienda Jireh",
+  "repo_url": "https://github.com/deliveryControl24/encomiendas-jireh",
+  "repo_rama": "main",
+  "archivos": [
+    "version.json",
+    "main.py",
+    "modules/config.py",
+    "modules/database.py",
+    "modules/imprimir.py",
+    "modules/configuracion.py",
+    "modules/nueva_encomienda.py",
+    "modules/historial.py",
+    "modules/costo_viaje.py",
+    "modules/arqueo_caja.py",
+    "modules/cuentas_cobrar.py",
+    "modules/kpi_dashboard.py",
+    "modules/reportes.py",
+    "modules/pago.py",
+    "modules/datepicker.py",
+    "modules/updater.py"
+  ]
+}

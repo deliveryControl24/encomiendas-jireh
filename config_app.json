@@ -1,0 +1,64 @@
+{
+  "moneda": "$",
+  "peso_unidad": "lb",
+  "paginacion_tamano": 20,
+  "prefijo_codigo": "MERC",
+  "deudas_vencidas_dias": 7,
+  "tarifa_precio_base": 0.0,
+  "tarifa_precio_por_lb": 0.0,
+  "zonas_envio": {},
+  "backup_dir": "backups",
+  "backup_max": 30,
+  "tema": "light",
+  "fuente_tamano": 10,
+  "sidebar_ancho": 200,
+  "destinos_usa": [
+    "Miami",
+    "Orlando",
+    "Houston",
+    "Los Angeles"
+  ],
+  "estados_envio": [
+    "Pendiente",
+    "En camino",
+    "Pagado",
+    "Entregado",
+    "Cancelado"
+  ],
+  "categorias_costo": [
+    "Transporte",
+    "Combustible",
+    "Mantenimiento",
+    "Salarios",
+    "Otros"
+  ],
+  "tipos_pago": [
+    "Efectivo",
+    "Transferencia",
+    "Tarjeta"
+  ],
+  "cajeros": [
+    "Admin"
+  ],
+  "usuarios": [],
+  "empresa_nombre": "Encomienda Jireh",
+  "empresa_tel": "",
+  "empresa_dir": "",
+  "empresa_ruc": "",
+  "recibo_mostrar_logo": true,
+  "recibo_logo_ruta": "",
+  "recibo_tamano_papel": "carta",
+  "recibo_mostrar_direccion": true,
+  "recibo_mostrar_telefono": true,
+  "recibo_mostrar_notas_internas": false,
+  "recibo_notas": "Gracias por su preferencia",
+  "sonido_crear_envio": true,
+  "alerta_deudas_activa": true,
+  "alerta_listos_recoger": true,
+  "reportes_rango_default": "hoy",
+  "reportes_exportacion_default": "csv",
+  "pin_acceso": "",
+  "pin_acceso_activo": false,
+  "timeout_sesion": 0,
+  "recibo_diseno": "clasico"
+}
