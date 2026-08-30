@@ -750,3 +750,45 @@ class Database:
             ORDER BY fecha DESC
         """, (anio, mes))
         return [dict(r) for r in cur.fetchall()]
+
+    # ── Historial de clientes ────────────────────────────────────────────────
+
+    def obtener_clientes(self, buscar="", telefono=""):
+        """Retorna lista de clientes únicos (remitentes) con resumen."""
+        cur = self.conn.cursor()
+        cur.execute("""
+            SELECT
+                ent_nombre AS nombre,
+                ent_tel AS telefono,
+                COUNT(*) AS envios,
+                SUM(total) AS total_gastado,
+                MAX(fecha) AS ultimo_envio
+            FROM envios
+            WHERE ent_nombre IS NOT NULL AND ent_nombre != ''
+            GROUP BY ent_nombre
+            ORDER BY ent_nombre
+        """)
+        clientes = [dict(r) for r in cur.fetchall()]
+
+        if buscar:
+            buscar_lower = buscar.lower()
+            clientes = [c for c in clientes
+                        if buscar_lower in (c.get("nombre") or "").lower()]
+
+        if telefono:
+            tel_lower = telefono.lower()
+            clientes = [c for c in clientes
+                        if tel_lower in (c.get("telefono") or "").lower()]
+
+        return clientes
+
+    def obtener_envios_por_cliente(self, nombre):
+        """Retorna todos los envios de un cliente específico."""
+        cur = self.conn.cursor()
+        cur.execute("""
+            SELECT *
+            FROM envios
+            WHERE ent_nombre = ?
+            ORDER BY fecha DESC
+        """, (nombre,))
+        return [dict(r) for r in cur.fetchall()]

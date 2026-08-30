@@ -18,6 +18,7 @@ from modules.reportes import ReportesFrame
 from modules.pago import PagoFrame
 from modules.configuracion import ConfiguracionFrame, ConfigManager
 from modules.historial_mensual import HistorialMensualFrame
+from modules.historial_clientes import HistorialClientesFrame
 from modules.config import get_base_dir
 import logging
 import os
@@ -276,6 +277,7 @@ class App(tk.Tk):
             ("nueva",     "➕  Nueva encomienda"),
             ("historial", "📋  Historial"),
             ("mensual",   "📅  Hist. mensual"),
+            ("clientes",  "👤  Hist. clientes"),
             ("costos",    "💰  Costos viaje"),
             ("cobrar",    "📋  Ctas. cobrar"),
             ("arqueo",    "💵  Arqueo caja"),
@@ -354,6 +356,7 @@ class App(tk.Tk):
             (NuevaEncomiendaFrame, "nueva"),
             (HistorialFrame, "historial"),
             (HistorialMensualFrame, "mensual"),
+            (HistorialClientesFrame, "clientes"),
             (CostoViajeFrame, "costos"),
             (CuentasCobrarFrame, "cobrar"),
             (ArqueoCajaFrame, "arqueo"),
