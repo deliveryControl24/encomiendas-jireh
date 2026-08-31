@@ -116,8 +116,19 @@ class Database:
                 nota        TEXT,
                 cerrado     INTEGER DEFAULT 0
             );
+
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario     TEXT    UNIQUE NOT NULL,
+                password    TEXT    NOT NULL,
+                nombre_completo TEXT DEFAULT '',
+                rol         TEXT    DEFAULT 'cajero',
+                activo      INTEGER DEFAULT 1,
+                created_at  TEXT    DEFAULT (datetime('now','localtime'))
+            );
         """)
         self.conn.commit()
+        self._ensure_admin_user()
 
     def _init_indexes(self):
         cur = self.conn.cursor()
@@ -136,6 +147,92 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_arqueos_fecha ON arqueos(fecha);
         """)
         self.conn.commit()
+
+    def _ensure_admin_user(self):
+        """Crea usuario admin por defecto si no existe ninguno."""
+        cur = self.conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM usuarios")
+        if cur.fetchone()[0] == 0:
+            import hashlib
+            salt = "encomienda_jireh_2024"
+            pw_hash = hashlib.sha256(f"{salt}admin123".encode()).hexdigest()
+            cur.execute(
+                "INSERT INTO usuarios (usuario, password, nombre_completo, rol) VALUES (?, ?, ?, ?)",
+                ("admin", pw_hash, "Administrador", "admin")
+            )
+            self.conn.commit()
+
+    # ── Gestión de usuarios ──────────────────────────────────────────────────
+
+    @staticmethod
+    def _hash_password(password, salt="encomienda_jireh_2024"):
+        import hashlib
+        return hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
+
+    def login(self, usuario, password):
+        """Verifica credenciales. Retorna dict del usuario o None."""
+        cur = self.conn.cursor()
+        pw_hash = self._hash_password(password)
+        cur.execute(
+            "SELECT id, usuario, nombre_completo, rol, activo FROM usuarios WHERE usuario = ? AND password = ?",
+            (usuario, pw_hash)
+        )
+        row = cur.fetchone()
+        if row and row["activo"]:
+            return dict(row)
+        return None
+
+    def crear_usuario(self, usuario, password, nombre_completo="", rol="cajero"):
+        """Crea un nuevo usuario. Retorna True si éxito, False si ya existe."""
+        cur = self.conn.cursor()
+        pw_hash = self._hash_password(password)
+        try:
+            cur.execute(
+                "INSERT INTO usuarios (usuario, password, nombre_completo, rol) VALUES (?, ?, ?, ?)",
+                (usuario, pw_hash, nombre_completo, rol)
+            )
+            self.conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def actualizar_usuario(self, usuario_id, password=None, nombre_completo=None, rol=None, activo=None):
+        """Actualiza campos de un usuario."""
+        cur = self.conn.cursor()
+        campos = []
+        valores = []
+        if password is not None:
+            campos.append("password = ?")
+            valores.append(self._hash_password(password))
+        if nombre_completo is not None:
+            campos.append("nombre_completo = ?")
+            valores.append(nombre_completo)
+        if rol is not None:
+            campos.append("rol = ?")
+            valores.append(rol)
+        if activo is not None:
+            campos.append("activo = ?")
+            valores.append(1 if activo else 0)
+        if not campos:
+            return False
+        valores.append(usuario_id)
+        cur.execute(f"UPDATE usuarios SET {', '.join(campos)} WHERE id = ?", valores)
+        self.conn.commit()
+        return True
+
+    def eliminar_usuario(self, usuario_id):
+        """Desactiva un usuario (no lo elimina físicamente)."""
+        cur = self.conn.cursor()
+        cur.execute("UPDATE usuarios SET activo = 0 WHERE id = ?", (usuario_id,))
+        self.conn.commit()
+
+    def obtener_usuarios(self):
+        """Retorna lista de todos los usuarios activos."""
+        cur = self.conn.cursor()
+        cur.execute(
+            "SELECT id, usuario, nombre_completo, rol, activo, created_at FROM usuarios ORDER BY usuario"
+        )
+        return [dict(r) for r in cur.fetchall()]
 
     def generar_codigo(self, prefijo="MERC"):
         now = datetime.now()

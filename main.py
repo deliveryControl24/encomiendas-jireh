@@ -19,6 +19,7 @@ from modules.pago import PagoFrame
 from modules.configuracion import ConfiguracionFrame, ConfigManager
 from modules.historial_mensual import HistorialMensualFrame
 from modules.historial_clientes import HistorialClientesFrame
+from modules.login import LoginWindow, UserManagementDialog
 from modules.config import get_base_dir
 import logging
 import os
@@ -51,6 +52,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Encomienda Jireh - Sistema de Envios")
+        self.usuario_actual = None
         
         # Establecer icono
         try:
@@ -75,6 +77,18 @@ class App(tk.Tk):
 
         self.db = Database()
 
+        # Mostrar login antes de continuar
+        self.withdraw()
+        self.after(100, self._mostrar_login)
+
+    def _mostrar_login(self):
+        def on_login(usuario):
+            self.usuario_actual = usuario
+            self.deiconify()
+            self._iniciar_app()
+        LoginWindow(self.db, on_login)
+
+    def _iniciar_app(self):
         # Buscar actualizaciones al iniciar
         import threading
         def _check_updates():
@@ -95,7 +109,7 @@ class App(tk.Tk):
 
         self._verificar_pin()
 
-        self._setup_style(fuente_tamano)
+        self._setup_style(self.config_mgr.get("fuente_tamano", 10))
         self._build_ui()
         self.show_frame("nueva")
         self.bind("<Control-s>", self._atajos)
@@ -329,6 +343,28 @@ class App(tk.Tk):
                                    command=self._alternar_tema)
         self.btn_tema.pack(side="bottom")
 
+        # User info and logout
+        if self.usuario_actual:
+            user_frame = tk.Frame(self.sidebar_bottom, bg=c["sidebar_active"], padx=16, pady=6)
+            user_frame.pack(side="bottom", fill="x", padx=8, pady=(4, 0))
+            
+            nombre = self.usuario_actual.get("nombre_completo") or self.usuario_actual.get("usuario", "")
+            rol = self.usuario_actual.get("rol", "")
+            tk.Label(user_frame, text=f"👤 {nombre}",
+                     font=("Segoe UI", 9, "bold"),
+                     bg=c["sidebar_active"], fg=c["sidebar_text"],
+                     anchor="w").pack(fill="x")
+            tk.Label(user_frame, text=f"   Rol: {rol}",
+                     font=("Segoe UI", 8),
+                     bg=c["sidebar_active"], fg=c["sidebar_icon"],
+                     anchor="w").pack(fill="x")
+            
+            tk.Button(user_frame, text="🚪 Cerrar sesión",
+                      font=("Segoe UI", 9),
+                      bg=c["sidebar_active"], fg="#791f1f",
+                      bd=0, relief="flat", anchor="w", cursor="hand2",
+                      command=self._cerrar_sesion).pack(fill="x", pady=(4, 0))
+
         # Today summaries
         self.lbl_hoy = tk.Label(self.sidebar_bottom, text="",
                                  font=("Segoe UI", 8),
@@ -460,6 +496,17 @@ class App(tk.Tk):
                 self.menu_buttons["cobrar"].config(text=txt)
         except:
             pass
+
+    def _cerrar_sesion(self):
+        from tkinter import messagebox
+        if messagebox.askyesno("Cerrar sesión",
+                               "¿Estás seguro de cerrar sesión?"):
+            self.usuario_actual = None
+            self.withdraw()
+            self.after(100, self._mostrar_login)
+
+    def _gestionar_usuarios(self):
+        UserManagementDialog(self, self.db)
 
     def show_frame(self, name):
         for key, frame in self.frames.items():
