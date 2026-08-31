@@ -2,13 +2,23 @@
 ==============================================
   modules/historial_mensual.py
   Resumen historico de pedidos por mes
-  con detalle al hacer clic
+  con cards, exportar Excel y detalle
 ==============================================
 """
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from modules.config import PAGINA_TAMANO
+import os
+import sys
+
+try:
+    from modules.config import get_base_dir
+except ImportError:
+    def get_base_dir():
+        if getattr(sys, 'frozen', False):
+            return os.path.dirname(sys.executable)
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 MESES_ES = {
@@ -27,26 +37,60 @@ class HistorialMensualFrame(tk.Frame):
         self._por_pagina = PAGINA_TAMANO
         self._total_paginas = 1
         self._mes_sel = None
+        self._datos_cache = []
         self._build()
 
     def _build(self):
         c = self.app.colores
 
-        hdr = tk.Frame(self, bg=c.get("card_bg", "#ffffff"), pady=14)
+        hdr = tk.Frame(self, bg=c.get("card_bg", "#ffffff"), pady=14, padx=20)
         hdr.pack(fill="x")
         tk.Label(hdr, text="📅  Historial mensual de pedidos",
                  font=("Segoe UI", 14, "bold"),
                  bg=c.get("card_bg", "#ffffff"),
-                 fg=c.get("accent", "#0f6e56")).pack(side="left", padx=20)
-        self._lbl_resumen = tk.Label(hdr, text="",
-                                      font=("Segoe UI", 9),
-                                      bg=c.get("card_bg", "#ffffff"),
-                                      fg="#888780")
-        self._lbl_resumen.pack(side="right", padx=20)
+                 fg=c.get("accent", "#0f6e56")).pack(side="left")
 
+        tk.Button(hdr, text="📥  Exportar Excel",
+                  font=("Segoe UI", 9, "bold"),
+                  bg=c.get("accent", "#0f6e56"), fg="#ffffff",
+                  bd=0, padx=14, pady=6, cursor="hand2",
+                  command=self._exportar_excel).pack(side="right", padx=(8, 0))
+
+        tk.Button(hdr, text="🖨  Imprimir",
+                  font=("Segoe UI", 9),
+                  bg="#f0efe8", fg="#5f5e5a",
+                  bd=0, padx=14, pady=6, cursor="hand2",
+                  command=self._imprimir).pack(side="right")
+
+        # ── Cards resumen ────────────────────────────────────────────────────
+        self.cards_frame = tk.Frame(self, bg=c.get("bg", "#f5f5f0"))
+        self.cards_frame.pack(fill="x", padx=14, pady=(10, 0))
+
+        self._cards = {}
+        labels_cards = [
+            ("meses",      "📅  Meses",        "0",     "#0f6e56", "#e1f5ee"),
+            ("envios",     "📦  Total envíos",  "0",     "#0c447c", "#e6f1fb"),
+            ("vendido",    "💰  Total vendido",  "$0.00", "#7a4800", "#faeeda"),
+            ("pagado",     "✅  Pagado",         "$0.00", "#085041", "#f6fdf9"),
+            ("pendiente",  "⏳  Pendiente",      "$0.00", "#791f1f", "#fcebeb"),
+        ]
+        for key, titulo, valor, fg_color, bg_color in labels_cards:
+            card = tk.Frame(self.cards_frame, bg=bg_color,
+                            highlightthickness=1, highlightbackground=fg_color + "33",
+                            padx=14, pady=10)
+            card.pack(side="left", fill="both", expand=True, padx=(0, 8))
+            tk.Label(card, text=titulo, font=("Segoe UI", 9),
+                     bg=bg_color, fg=fg_color).pack(anchor="w")
+            lbl_valor = tk.Label(card, text=valor,
+                                 font=("Segoe UI", 14, "bold"),
+                                 bg=bg_color, fg=fg_color)
+            lbl_valor.pack(anchor="w", pady=(2, 0))
+            self._cards[key] = lbl_valor
+
+        # ── Pane principal ───────────────────────────────────────────────────
         paned = tk.PanedWindow(self, orient="horizontal",
                                 bg="#d8d6cf", sashwidth=5, sashrelief="flat")
-        paned.pack(fill="both", expand=True, padx=14, pady=(6, 12))
+        paned.pack(fill="both", expand=True, padx=14, pady=(8, 12))
 
         left = tk.Frame(paned, bg="#ffffff",
                         highlightthickness=1, highlightbackground="#dddbd4")
@@ -65,12 +109,13 @@ class HistorialMensualFrame(tk.Frame):
     def _build_tree_resumen(self, parent):
         style = ttk.Style()
         style.configure("Mes.Treeview",
-                         font=("Segoe UI", 9), rowheight=28,
+                         font=("Segoe UI", 9), rowheight=30,
                          background="#ffffff", fieldbackground="#ffffff",
                          borderwidth=0)
         style.configure("Mes.Treeview.Heading",
                          font=("Segoe UI", 9, "bold"),
-                         background="#f0efe8", relief="flat")
+                         background="#0f6e56", foreground="#ffffff",
+                         relief="flat")
         style.map("Mes.Treeview",
                   background=[("selected", "#d4f5eb")],
                   foreground=[("selected", "#085041")])
@@ -80,9 +125,9 @@ class HistorialMensualFrame(tk.Frame):
                                   show="headings", selectmode="browse",
                                   style="Mes.Treeview")
         hdrs = [
-            ("mes",           "Mes",          110, "w"),
-            ("anio",          "Año",           60, "center"),
-            ("envios",        "Envíos",        65, "center"),
+            ("mes",           "Mes",          100, "w"),
+            ("anio",          "Año",           55, "center"),
+            ("envios",        "Envíos",        60, "center"),
             ("total_vendido", "Vendido",       90, "e"),
             ("total_pagado",  "Pagado",        90, "e"),
             ("pendiente",     "Pendiente",     90, "e"),
@@ -91,8 +136,9 @@ class HistorialMensualFrame(tk.Frame):
             self.tree.heading(col, text=txt)
             self.tree.column(col, width=w, minwidth=40, anchor=anc)
 
-        self.tree.tag_configure("par",   background="#f9f9f6")
-        self.tree.tag_configure("impar", background="#ffffff")
+        self.tree.tag_configure("par",      background="#f9f9f6")
+        self.tree.tag_configure("impar",    background="#ffffff")
+        self.tree.tag_configure("con_deuda", foreground="#791f1f")
 
         vsb = ttk.Scrollbar(parent, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
@@ -147,10 +193,11 @@ class HistorialMensualFrame(tk.Frame):
     def _build_detalle_vacio(self):
         for w in self._detalle_frame.winfo_children():
             w.destroy()
+        c = self.app.colores
         tk.Label(self._detalle_frame,
-                 text="Selecciona un mes para ver el detalle",
-                 font=("Segoe UI", 11), bg="#ffffff", fg="#aaa9a2"
-                 ).pack(expand=True)
+                 text="📅\n\nSelecciona un mes\npara ver el detalle",
+                 font=("Segoe UI", 11), bg="#ffffff", fg="#ccc9c0",
+                 justify="center").pack(expand=True)
 
     def refresh(self):
         self._mes_sel = None
@@ -158,16 +205,29 @@ class HistorialMensualFrame(tk.Frame):
         self._cargar_resumen()
         self._build_detalle_vacio()
 
+    def _actualizar_cards(self, datos):
+        total_meses = len(datos)
+        total_envios = sum(f.get("envios", 0) for f in datos)
+        total_vendido = sum(f.get("total_vendido") or 0 for f in datos)
+        total_pagado = sum(f.get("total_pagado") or 0 for f in datos)
+        total_pendiente = sum(f.get("pendiente") or 0 for f in datos)
+
+        self._cards["meses"].config(text=str(total_meses))
+        self._cards["envios"].config(text=str(total_envios))
+        self._cards["vendido"].config(text=f"${total_vendido:,.2f}")
+        self._cards["pagado"].config(text=f"${total_pagado:,.2f}")
+        self._cards["pendiente"].config(text=f"${total_pendiente:,.2f}")
+
     def _cargar_resumen(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        datos = self.db.obtener_resumen_mensual()
+        self._datos_cache = self.db.obtener_resumen_mensual()
+        self._actualizar_cards(self._datos_cache)
 
-        total_registros = len(datos)
+        total_registros = len(self._datos_cache)
         if total_registros == 0:
             self._total_paginas = 1
-            self._lbl_resumen.config(text="Sin registros")
             self._pag_label.config(text="Página 1 de 1")
             return
 
@@ -177,7 +237,7 @@ class HistorialMensualFrame(tk.Frame):
 
         inicio = (self._pagina - 1) * self._por_pagina
         fin = inicio + self._por_pagina
-        pagina_datos = datos[inicio:fin]
+        pagina_datos = self._datos_cache[inicio:fin]
 
         for i, fila in enumerate(pagina_datos):
             mes_num = fila["mes"]
@@ -189,16 +249,19 @@ class HistorialMensualFrame(tk.Frame):
             pendiente = fila["pendiente"] or 0
 
             tag = "par" if i % 2 == 0 else "impar"
+            tags_extra = (tag,)
+            if pendiente > 0:
+                tags_extra = ("con_deuda", tag)
+
             self.tree.insert("", "end", iid=f"{anio}-{mes_num}",
                              values=(mes_nombre, anio, envios,
                                      f"${vendido:,.2f}",
                                      f"${pagado:,.2f}",
                                      f"${pendiente:,.2f}"),
-                             tags=(tag,))
+                             tags=tags_extra)
 
-        self._lbl_resumen.config(text=f"{total_registros} meses registrados")
         self._pag_label.config(
-            text=f"Página {self._pagina} de {self._total_paginas}  ({total_registros} registros)")
+            text=f"Página {self._pagina} de {self._total_paginas}  ({total_registros} meses)")
 
     def _on_seleccionar(self, event=None):
         sel = self.tree.selection()
@@ -217,45 +280,67 @@ class HistorialMensualFrame(tk.Frame):
 
         c = self.app.colores
 
-        hdr = tk.Frame(self._detalle_frame, bg=c.get("card_header", "#f0efe8"), pady=10, padx=14)
+        # Header del detalle
+        hdr = tk.Frame(self._detalle_frame, bg=c.get("card_header", "#f0efe8"), pady=12, padx=16)
         hdr.pack(fill="x")
         mes_nombre = MESES_ES.get(mes, str(mes))
         tk.Label(hdr, text=f"📋  {mes_nombre} {anio}",
-                 font=("Segoe UI", 12, "bold"),
+                 font=("Segoe UI", 13, "bold"),
                  bg=c.get("card_header", "#f0efe8"),
                  fg=c.get("card_header_fg", "#0f6e56")).pack(side="left")
 
         envios = self.db.obtener_envios_por_mes(anio, mes)
 
         if not envios:
-            tk.Label(self._detalle_frame, text="No hay envíos en este mes",
-                     font=("Segoe UI", 10), bg="#ffffff", fg="#aaa9a2"
-                     ).pack(expand=True)
+            frame_vacio = tk.Frame(self._detalle_frame, bg="#ffffff")
+            frame_vacio.pack(fill="both", expand=True)
+            tk.Label(frame_vacio, text="📦\n\nNo hay envíos\nen este mes",
+                     font=("Segoe UI", 11), bg="#ffffff", fg="#ccc9c0",
+                     justify="center").pack(expand=True)
             return
 
+        # Stats del mes
+        stats = tk.Frame(self._detalle_frame, bg="#ffffff", padx=16, pady=8)
+        stats.pack(fill="x")
+
+        total_v = sum(e.get("total", 0) for e in envios)
+        total_p = sum(e.get("abono", 0) for e in envios)
+        pend = total_v - total_p
+
+        for txt, val, fg in [
+            (f"📦 {len(envios)} envíos", "", "#333"),
+            (f"💰 Vendido: ${total_v:,.2f}", "", "#0c447c"),
+            (f"✅ Pagado: ${total_p:,.2f}", "", "#085041"),
+            (f"⏳ Pendiente: ${pend:,.2f}", "", "#791f1f" if pend > 0 else "#085041"),
+        ]:
+            tk.Label(stats, text=txt, font=("Segoe UI", 9),
+                     bg="#ffffff", fg=fg).pack(side="left", padx=(0, 16))
+
         style = ttk.Style()
-        style.configure("Det.Treeview",
-                         font=("Segoe UI", 9), rowheight=24,
+        style.configure("DetMes.Treeview",
+                         font=("Segoe UI", 9), rowheight=26,
                          background="#ffffff", fieldbackground="#ffffff",
                          borderwidth=0)
-        style.configure("Det.Treeview.Heading",
+        style.configure("DetMes.Treeview.Heading",
                          font=("Segoe UI", 8, "bold"),
-                         background="#f0efe8", relief="flat")
+                         background="#0f6e56", foreground="#ffffff",
+                         relief="flat")
 
         tree_frame = tk.Frame(self._detalle_frame, bg="#ffffff")
-        tree_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        tree_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
-        cols = ("codigo", "fecha", "entrega", "recibe", "total", "estado")
+        cols = ("codigo", "fecha", "entrega", "recibe", "total", "abono", "estado")
         tree = ttk.Treeview(tree_frame, columns=cols,
                              show="headings", selectmode="browse",
-                             style="Det.Treeview")
+                             style="DetMes.Treeview")
         hdrs_det = [
             ("codigo",  "Código",    85, "w"),
-            ("fecha",   "Fecha",     80, "w"),
-            ("entrega", "Entrega",  110, "w"),
-            ("recibe",  "Recibe",   110, "w"),
+            ("fecha",   "Fecha",     75, "w"),
+            ("entrega", "Entrega",  100, "w"),
+            ("recibe",  "Recibe",   100, "w"),
             ("total",   "Total",     80, "e"),
-            ("estado",  "Estado",    75, "center"),
+            ("abono",   "Abono",     80, "e"),
+            ("estado",  "Estado",    70, "center"),
         ]
         for col, txt, w, anc in hdrs_det:
             tree.heading(col, text=txt)
@@ -277,17 +362,76 @@ class HistorialMensualFrame(tk.Frame):
             tree.insert("", "end",
                         values=(e.get("codigo", ""), fecha,
                                 e.get("ent_nombre", ""), e.get("rec_nombre", ""),
-                                f"${e.get('total', 0):,.2f}", estado),
+                                f"${e.get('total', 0):,.2f}",
+                                f"${e.get('abono', 0):,.2f}",
+                                estado),
                         tags=(estado,))
 
-        total_vendido = sum(e.get("total", 0) for e in envios)
-        total_pagado = sum(e.get("abono", 0) for e in envios)
+    def _exportar_excel(self):
+        if not self._datos_cache:
+            messagebox.showinfo("Sin datos", "No hay datos para exportar")
+            return
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        except ImportError:
+            messagebox.showerror("Error", "Instala openpyxl: pip install openpyxl")
+            return
 
-        pie = tk.Frame(self._detalle_frame, bg=c.get("card_header", "#f0efe8"), pady=8, padx=14)
-        pie.pack(fill="x")
-        tk.Label(pie, text=f"Total vendido: ${total_vendido:,.2f}  |  "
-                           f"Pagado: ${total_pagado:,.2f}  |  "
-                           f"Envíos: {len(envios)}",
-                 font=("Segoe UI", 9),
-                 bg=c.get("card_header", "#f0efe8"),
-                 fg=c.get("card_header_fg", "#0f6e56")).pack(side="left")
+        from tkinter import filedialog
+        ruta = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Excel", "*.xlsx")],
+            initialfile=f"historial_mensual_{datetime.now().strftime('%Y%m')}.xlsx"
+        )
+        if not ruta:
+            return
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Hist. Mensual"
+
+        header_font = Font(bold=True, color="FFFFFF", size=10)
+        header_fill = PatternFill(start_color="0F6E56", end_color="0F6E56", fill_type="solid")
+        header_align = Alignment(horizontal="center", vertical="center")
+        thin_border = Border(
+            left=Side(style="thin"), right=Side(style="thin"),
+            top=Side(style="thin"), bottom=Side(style="thin")
+        )
+
+        headers = ["Mes", "Año", "Envíos", "Vendido", "Pagado", "Pendiente"]
+        for col, h in enumerate(headers, 1):
+            c = ws.cell(row=1, column=col, value=h)
+            c.font = header_font
+            c.fill = header_fill
+            c.alignment = header_align
+            c.border = thin_border
+
+        for i, fila in enumerate(self._datos_cache, 2):
+            mes_num = fila["mes"]
+            mes_nombre = MESES_ES.get(mes_num, str(mes_num))
+            ws.cell(row=i, column=1, value=mes_nombre).border = thin_border
+            ws.cell(row=i, column=2, value=fila["anio"]).border = thin_border
+            ws.cell(row=i, column=3, value=fila["envios"]).border = thin_border
+            ws.cell(row=i, column=4, value=fila.get("total_vendido") or 0).border = thin_border
+            ws.cell(row=i, column=5, value=fila.get("total_pagado") or 0).border = thin_border
+            ws.cell(row=i, column=6, value=fila.get("pendiente") or 0).border = thin_border
+
+        ws.column_dimensions["A"].width = 15
+        ws.column_dimensions["B"].width = 10
+        ws.column_dimensions["C"].width = 10
+        ws.column_dimensions["D"].width = 15
+        ws.column_dimensions["E"].width = 15
+        ws.column_dimensions["F"].width = 15
+
+        wb.save(ruta)
+        messagebox.showinfo("Éxito", f"Exportado a:\n{ruta}")
+
+    def _imprimir(self):
+        from modules.imprimir import imprimir_historial
+        if self._datos_cache:
+            imprimir_historial(self._datos_cache)
+
+
+# Necesario para _exportar_excel
+from datetime import datetime
