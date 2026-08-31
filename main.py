@@ -77,9 +77,13 @@ class App(tk.Tk):
 
         self.db = Database()
 
-        # Mostrar login antes de continuar
+        # Mostrar login si está activado
         self.withdraw()
-        self.after(100, self._mostrar_login)
+        if self.config_mgr.get("login_activo", True):
+            self.after(100, self._mostrar_login)
+        else:
+            self.usuario_actual = {"usuario": "admin", "nombre_completo": "Administrador", "rol": "admin"}
+            self.after(100, self._iniciar_app)
 
     def _mostrar_login(self):
         def on_login(usuario):

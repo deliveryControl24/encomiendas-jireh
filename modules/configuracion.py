@@ -800,15 +800,38 @@ class ConfiguracionFrame(ttk.Frame):
         tab = ttk.Frame(self.notebook)
         self.notebook.add(tab, text="  Seguridad  ")
 
-        body = self._crear_card(tab, "PIN de Acceso", c)
+        # ── Login ────────────────────────────────────────────────────────────
+        body_login = self._crear_card(tab, "Login de Usuarios", c)
+
+        self._vars["login_activo"] = tk.BooleanVar(
+            value=self.config_mgr.get("login_activo", True))
+        tk.Label(body_login, text="Activar login al iniciar la aplicación",
+                 font=("Segoe UI", 10),
+                 bg=c["card_bg"], fg=c["fg"]).pack(anchor="w", padx=10, pady=4)
+        ttk.Checkbutton(body_login, variable=self._vars["login_activo"]).pack(anchor="w", padx=20)
+
+        tk.Label(body_login, text="Si se desactiva, la app entra directamente sin pedir usuario/contraseña",
+                 font=("Segoe UI", 8), bg=c["card_bg"], fg="#888780").pack(anchor="w", padx=20, pady=(0, 4))
+
+        # Gestión de usuarios
+        btn_frame = tk.Frame(body_login, bg=c["card_bg"])
+        btn_frame.pack(fill="x", padx=10, pady=(8, 4))
+        tk.Button(btn_frame, text="👤  Gestionar usuarios",
+                  font=("Segoe UI", 9, "bold"),
+                  bg=c["accent"], fg="#ffffff", bd=0, padx=14, pady=6,
+                  cursor="hand2",
+                  command=lambda: self._gestionar_usuarios()).pack(side="left")
+
+        # ── PIN ──────────────────────────────────────────────────────────────
+        body_pin = self._crear_card(tab, "PIN de Acceso (adicional)", c)
 
         self._vars["pin_acceso_activo"] = tk.BooleanVar(
             value=self.config_mgr.get("pin_acceso_activo", False))
-        tk.Label(body, text="Activar PIN de acceso al iniciar", font=("Segoe UI", 10),
+        tk.Label(body_pin, text="Activar PIN de acceso al iniciar", font=("Segoe UI", 10),
                  bg=c["card_bg"], fg=c["fg"]).pack(anchor="w", padx=10, pady=4)
-        ttk.Checkbutton(body, variable=self._vars["pin_acceso_activo"]).pack(anchor="w", padx=20)
+        ttk.Checkbutton(body_pin, variable=self._vars["pin_acceso_activo"]).pack(anchor="w", padx=20)
 
-        self._vars["pin_acceso"] = self._add_field(body, "PIN (4-6 digitos):", c,
+        self._vars["pin_acceso"] = self._add_field(body_pin, "PIN (4-6 digitos):", c,
                                                    self.config_mgr.get("pin_acceso", ""), "password")
 
         # Timeout
@@ -1093,6 +1116,10 @@ class ConfiguracionFrame(ttk.Frame):
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo eliminar:\n{e}")
 
+    def _gestionar_usuarios(self):
+        from modules.login import UserManagementDialog
+        UserManagementDialog(self, self.db)
+
     def _guardar_todo(self):
         try:
             self.config_mgr.set("moneda", self._vars["moneda"].get().strip())
@@ -1147,6 +1174,7 @@ class ConfiguracionFrame(ttk.Frame):
             pin = self._vars["pin_acceso"].get().strip()
             self.config_mgr.set("pin_acceso", pin)
             self.config_mgr.set("pin_acceso_activo", self._vars["pin_acceso_activo"].get())
+            self.config_mgr.set("login_activo", self._vars["login_activo"].get())
             self.config_mgr.set("timeout_sesion", int(self._vars["timeout_sesion"].get() or 0))
 
             # Listas
@@ -1238,6 +1266,7 @@ class ConfiguracionFrame(ttk.Frame):
         self._vars["reportes_exportacion_default"].set(self.config_mgr.get("reportes_exportacion_default", "csv"))
         self._vars["pin_acceso"].set(self.config_mgr.get("pin_acceso", ""))
         self._vars["pin_acceso_activo"].set(self.config_mgr.get("pin_acceso_activo", False))
+        self._vars["login_activo"].set(self.config_mgr.get("login_activo", True))
         self._vars["timeout_sesion"].set(str(self.config_mgr.get("timeout_sesion", 0)))
         self._vars["backup_dir"].set(self.config_mgr.get("backup_dir", "backups"))
         self._vars["backup_max"].set(str(self.config_mgr.get("backup_max", 30)))

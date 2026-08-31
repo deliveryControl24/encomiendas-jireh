@@ -205,6 +205,11 @@ class UserManagementDialog(tk.Toplevel):
                   bg="#fcebeb", fg="#791f1f", bd=0, padx=12, pady=6,
                   cursor="hand2", command=self._desactivar).pack(side="left")
 
+        tk.Button(btns_bajo, text="🔑 Cambiar contraseña",
+                  font=("Segoe UI", 9),
+                  bg="#faeeda", fg="#7a4800", bd=0, padx=12, pady=6,
+                  cursor="hand2", command=self._cambiar_password).pack(side="left", padx=(8, 0))
+
         self._refrescar()
 
     def _refrescar(self):
@@ -256,3 +261,22 @@ class UserManagementDialog(tk.Toplevel):
         if messagebox.askyesno("Confirmar", "¿Desactivar este usuario?", parent=self):
             self.db.eliminar_usuario(uid)
             self._refrescar()
+
+    def _cambiar_password(self):
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showwarning("Selecciona", "Selecciona un usuario",
+                                   parent=self)
+            return
+        uid = int(sel[0])
+        from tkinter import simpledialog
+        nueva_pw = simpledialog.askstring("Cambiar contraseña",
+                                          "Nueva contraseña:", show="*",
+                                          parent=self)
+        if nueva_pw:
+            if len(nueva_pw) < 4:
+                messagebox.showwarning("Contraseña corta",
+                                       "Mínimo 4 caracteres", parent=self)
+                return
+            self.db.actualizar_usuario(uid, password=nueva_pw)
+            messagebox.showinfo("Éxito", "Contraseña actualizada", parent=self)
